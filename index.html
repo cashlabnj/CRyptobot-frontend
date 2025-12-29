@@ -153,7 +153,7 @@
         <button class="filter-btn" onclick="filterData('topic-crypto')"><span class="dot" style="background:var(--topic-crypto)"></span> Crypto / DeFi</button>
         <button class="filter-btn" onclick="filterData('topic-mention')"><span class="dot" style="background:var(--topic-mention)"></span> Mentions / Social</button>
 
-        <!-- NEW SLIDER SECTION -->
+        <!-- SLIDER SECTION -->
         <h3>Minimum Confidence</h3>
         <div class="slider-container">
             <div class="slider-label">
@@ -188,19 +188,19 @@
     const RENDER_URL = "https://poly-backend-ihgd.onrender.com";
     let appData = [];
 
-    // SLIDER LOGIC
+    // --- SLIDER LOGIC ---
     const slider = document.getElementById('confidenceSlider');
     const valDisplay = document.getElementById('confidenceValue');
 
     slider.oninput = function() {
         valDisplay.innerText = this.value + "%";
-        // Re-render with new slider value
-        render(appData); 
+        render(appData);
     }
 
+    // --- DATA FETCHING ---
     async function refreshData() {
         const grid = document.getElementById('grid');
-        grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 40px;">🔍 Analyzing 50+ Live Markets...<br><span style="font-size:0.8rem; color:#64748b">Sorting by Topic & Exchange...</span></div>`;
+        grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 40px;">🔍 Analyzing 50+ Live Markets...<br><span style="font-size:0.8rem; color:#64748b">Connecting to Render Backend...</span></div>`;
 
         try {
             const response = await fetch(`${RENDER_URL}/api/discover`, {
@@ -221,14 +221,26 @@
                 }));
                 render(appData);
             } else {
-                throw new Error("Scan Failed");
+                // --- ERROR DEBUGGING SECTION ---
+                const errorText = await response.text();
+                console.error("Server Error:", response.status, errorText);
+                grid.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align:center; color: #ef4444; padding:20px;">
+                        Scan Failed (Error ${response.status})<br>
+                        <span style="font-size:0.9rem; color:#94a3b8; background:rgba(255,0,0,0.1); padding:10px; border-radius:6px; display:block; margin-top:10px;">
+                            Backend Response: ${errorText.substring(0, 200)}...
+                        </span>
+                        <br><br>
+                        <span style="font-size:0.8rem; color:#64748b">Check Render Logs or API Keys.</span>
+                    </div>`;
             }
         } catch (error) {
-            console.error(error);
-            grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color: #ef4444;">Scan Failed. Check connection.</div>`;
+            console.error("Network Error:", error);
+            grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color: #ef4444;">Network Error.<br><span style="font-size:0.8rem; color:#94a3b8">Is URL correct? ${RENDER_URL}</span></div>`;
         }
     }
 
+    // --- FILTERING ---
     let currentFilter = 'all';
 
     function filterData(filter) {
@@ -238,6 +250,7 @@
         render(appData);
     }
 
+    // --- RENDERING ---
     function render(data) {
         const grid = document.getElementById('grid');
         grid.innerHTML = '';
@@ -304,6 +317,7 @@
         });
     }
 
+    // Start scan immediately on load
     refreshData();
 </script>
 
