@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -76,6 +76,21 @@
         
         .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 
+        /* Slider Styles */
+        .slider-container {
+            margin-bottom: 20px;
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .slider-label {
+            display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 10px; color: var(--text-secondary);
+        }
+        input[type=range] {
+            width: 100%; cursor: pointer; accent-color: var(--success);
+        }
+
         main { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 20px; }
         
         .dashboard-grid {
@@ -137,6 +152,16 @@
         <button class="filter-btn" onclick="filterData('topic-geo')"><span class="dot" style="background:var(--topic-geo)"></span> Geopolitics / Pol</button>
         <button class="filter-btn" onclick="filterData('topic-crypto')"><span class="dot" style="background:var(--topic-crypto)"></span> Crypto / DeFi</button>
         <button class="filter-btn" onclick="filterData('topic-mention')"><span class="dot" style="background:var(--topic-mention)"></span> Mentions / Social</button>
+
+        <!-- NEW SLIDER SECTION -->
+        <h3>Minimum Confidence</h3>
+        <div class="slider-container">
+            <div class="slider-label">
+                <span>Threshold</span>
+                <span id="confidenceValue" style="color:var(--success); font-weight:bold;">50%</span>
+            </div>
+            <input type="range" id="confidenceSlider" min="0" max="100" value="50" step="5">
+        </div>
         
         <div style="margin-top:auto; font-size:0.75rem; color:#64748b; padding-top:20px; border-top:1px solid #2a3441;">
             Status: Monitoring API Feeds...
@@ -163,6 +188,16 @@
     const RENDER_URL = "https://poly-backend-ihgd.onrender.com";
     let appData = [];
 
+    // SLIDER LOGIC
+    const slider = document.getElementById('confidenceSlider');
+    const valDisplay = document.getElementById('confidenceValue');
+
+    slider.oninput = function() {
+        valDisplay.innerText = this.value + "%";
+        // Re-render with new slider value
+        render(appData); 
+    }
+
     async function refreshData() {
         const grid = document.getElementById('grid');
         grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 40px;">🔍 Analyzing 50+ Live Markets...<br><span style="font-size:0.8rem; color:#64748b">Sorting by Topic & Exchange...</span></div>`;
@@ -181,7 +216,6 @@
                 const results = await response.json();
                 appData = results.map(item => ({
                     ...item,
-                    // Normalize data for safety
                     source: item.source || "Unknown",
                     topic: item.topic || "geo" 
                 }));
@@ -195,33 +229,35 @@
         }
     }
 
+    let currentFilter = 'all';
+
     function filterData(filter) {
-        // Update active button visual
+        currentFilter = filter;
         document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
         event.target.classList.add('active');
-
-        let filtered = [];
-        if (filter === 'all') {
-            filtered = appData;
-        } else {
-            const [type, value] = filter.split('-');
-            filtered = appData.filter(item => {
-                return item[type].toLowerCase() === value.toLowerCase();
-            });
-        }
-        render(filtered);
+        render(appData);
     }
 
     function render(data) {
         const grid = document.getElementById('grid');
         grid.innerHTML = '';
 
-        if (data.length === 0) {
-            grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 40px;">No bets found matching this filter.</div>`;
+        // 1. Apply Confidence Slider Filter
+        const minConf = parseInt(slider.value);
+        let filtered = data.filter(item => item.confidence >= minConf);
+
+        // 2. Apply Category/Source Filter
+        if (currentFilter !== 'all') {
+            const [type, value] = currentFilter.split('-');
+            filtered = filtered.filter(item => item[type].toLowerCase() === value.toLowerCase());
+        }
+
+        if (filtered.length === 0) {
+            grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 40px;">No bets found matching current filters.<br><span style="font-size:0.8rem; color:#64748b">Try lowering the Confidence Slider.</span></div>`;
             return;
         }
 
-        data.forEach(item => {
+        filtered.forEach(item => {
             const edgePercent = (item.edge * 100).toFixed(1);
             const isGood = item.edge > 0;
             
@@ -268,7 +304,6 @@
         });
     }
 
-    // Start
     refreshData();
 </script>
 
